@@ -2,28 +2,33 @@
 
 [![CI](https://github.com/trysmr/metago/actions/workflows/ci.yml/badge.svg)](https://github.com/trysmr/metago/actions/workflows/ci.yml)
 
-ローカルに取得済みのSalesforce Metadata XMLを解析し、オブジェクト定義と項目定義をMarkdownおよびHTMLへ変換するGo製CLIです。
+Generate Markdown and HTML documentation from local Salesforce metadata XML.
 
-Salesforce APIへの接続やMetadataの取得は行いません。処理対象はローカルファイルだけです。
+metago reads the `objects` directory of a Salesforce DX project and produces a browsable reference of every object and field. It never connects to a Salesforce org — it only reads files you already have on disk.
 
-## 主な機能
+日本語版は[README.ja.md](README.ja.md)にあります。
 
-- オブジェクト一覧のMarkdownとHTMLを生成
-- オブジェクトごとの詳細ページを生成
-- 項目の型、長さ、精度、小数点以下、参照先、リレーション名を表示
-- 必須、一意、外部ID、暗号化、履歴管理を属性ごとの列に表示
-- 生成対象に含まれる参照先オブジェクトへのリンクを生成
-- `--org-url`指定時にSalesforce設定画面へのリンクを生成
-- 一時ディレクトリで生成してから、以前の生成結果と入れ替え
+> **Note**
+> The command output and the generated documents are written in Japanese, because the headings follow the wording of the Salesforce Japanese UI (`表示ラベル`, `項目とリレーション`, and so on). Only this README is in English.
 
-## 対応するMetadata
+## Features
 
-現在は次のファイルを解析します。
+- Generates an object index in both Markdown and HTML
+- Generates a detail page per object
+- Shows field type, length, precision, scale, referenced objects, and relationship name
+- Shows required, unique, external ID, encrypted, and history-tracking as separate columns
+- Links to referenced objects when they are part of the same run
+- Links to the Salesforce setup screens when `--org-url` is given
+- Writes to a staging directory first, then swaps it with the previous output
 
-- `<オブジェクトAPI名>.object-meta.xml`
+## Supported metadata
+
+metago parses these files:
+
+- `<ObjectApiName>.object-meta.xml`
 - `fields/*.field-meta.xml`
 
-想定するディレクトリ構成は次のとおりです。
+It expects the standard Salesforce DX source layout:
 
 ```text
 force-app/main/default/objects/
@@ -37,53 +42,29 @@ force-app/main/default/objects/
         └── Status__c.field-meta.xml
 ```
 
-標準オブジェクトなどでオブジェクトXMLが存在しない場合は、オブジェクトディレクトリ名をAPI名として扱います。
+When an object XML is absent — as is common for standard objects — the directory name is used as the API name.
 
-### オブジェクトXMLから読み取る情報
+**From the object XML**: API name, label, plural label, deployment status, sharing model, activities, reports, history tracking.
 
-- API名
-- 表示ラベル
-- 複数形の表示ラベル
-- リリース情報
-- 共有モデル
-- 活動
-- レポート
-- 項目履歴管理
+**From the field XML**: API name, label, type, required, unique, external ID, encrypted, history tracking, length, precision, scale, referenced objects, relationship name, formula.
 
-### 項目XMLから読み取る情報
+Formulas are wrapped in an HTML `<code>` element in Markdown as well. Line breaks become `<br>`, so the Markdown table stays on one row while the formula still breaks where it does in the XML. In HTML the line breaks are kept as they are.
 
-- API名
-- 表示ラベル
-- 型
-- 必須
-- 一意
-- 外部ID
-- 暗号化
-- 履歴管理
-- 長さ
-- 精度
-- 小数点以下
-- 参照先
-- リレーション名
-- 数式
+## Installation
 
-数式はMarkdownでもHTMLの`<code>`要素で囲みます。改行が含まれる場合は`<br>`へ変換するため、Markdownの表を1行に保ったまま、表示上はXMLと同じ位置で改行されます。HTMLでは`code`要素内にXMLの改行をそのまま維持します。
-
-## インストール
-
-Go 1.26以上が必要です。
+Requires Go 1.26 or later.
 
 ```sh
 go install github.com/trysmr/metago/cmd/metago@latest
 ```
 
-`$GOBIN`、これを設定していない場合は`$HOME/go/bin`へ配置します。このディレクトリに`PATH`が通っていることを確認してください。
+The binary is placed in `$GOBIN`, or `$HOME/go/bin` when that is not set. Make sure the directory is on your `PATH`.
 
-Goを用意できない場合は、[GitHub Releases](https://github.com/trysmr/metago/releases)でLinux、macOS、Windows向けにamd64とarm64のアーカイブを配布しています。macOSではブラウザ経由でダウンロードした実行ファイルをGatekeeperが止めるため、`curl`で取得するか、`xattr -d com.apple.quarantine metago`で隔離属性を外してください。
+If you cannot install Go, prebuilt archives for Linux, macOS, and Windows on amd64 and arm64 are published on [GitHub Releases](https://github.com/trysmr/metago/releases). On macOS, Gatekeeper blocks binaries downloaded through a browser: fetch the archive with `curl`, or clear the attribute with `xattr -d com.apple.quarantine metago`.
 
-## 実行方法
+## Usage
 
-解析対象の`objects`ディレクトリと生成先を指定します。
+Point metago at an `objects` directory and an output directory.
 
 ```sh
 metago \
@@ -91,7 +72,7 @@ metago \
   --output /path/to/output
 ```
 
-Salesforce設定画面へのリンクも生成する場合は、組織のベースURLを指定します。
+Pass your org's base URL to also link to the Salesforce setup screens.
 
 ```sh
 metago \
@@ -100,31 +81,31 @@ metago \
   --org-url https://example.my.salesforce.com
 ```
 
-### オプション
+### Options
 
-| オプション  | 必須   | 説明                              |
-| ----------- | ------ | --------------------------------- |
-| `--input`   | はい   | Salesforceの`objects`ディレクトリ |
-| `--output`  | はい   | 生成先ディレクトリ                |
-| `--org-url` | いいえ | Salesforce組織のベースURL         |
-| `--version` | いいえ | バージョンを表示して終了          |
-| `--help`    | いいえ | オプション一覧を表示して終了      |
+| Option      | Required | Description                                    |
+| ----------- | -------- | ---------------------------------------------- |
+| `--input`   | Yes      | Salesforce `objects` directory                 |
+| `--output`  | Yes      | Output directory                               |
+| `--org-url` | No       | Base URL of the Salesforce org                 |
+| `--version` | No       | Print the version and exit                     |
+| `--help`    | No       | Print the option list and exit                 |
 
-`--org-url`にはHTTPSのスキームとホストだけを指定してください。パス、クエリ、フラグメント、認証情報を含むURLは受け付けません。
+`--org-url` accepts an HTTPS scheme and host only. URLs carrying a path, query, fragment, or credentials are rejected.
 
-### Windowsで実行する場合
+### Running on Windows
 
-進捗やエラーのメッセージはUTF-8で出力します。従来のコマンドプロンプトは既定のコードページがUTF-8ではないため、日本語が化けることがあります。その場合は実行前にコードページを切り替えてください。
+Messages are written as UTF-8. The classic Command Prompt does not use UTF-8 as its default code page, so Japanese text may be garbled. Switch the code page before running:
 
 ```bat
 chcp 65001
 ```
 
-Windows TerminalやPowerShell、Visual Studio Codeのターミナルでは、この操作は不要です。生成するMarkdownとHTMLは実行環境にかかわらずUTF-8で書き出すため、影響を受けるのは画面表示だけです。
+Windows Terminal, PowerShell, and the Visual Studio Code terminal need no such step. The generated Markdown and HTML are always UTF-8, so only the on-screen output is affected.
 
-## 出力
+## Output
 
-指定した出力先に、形式別のディレクトリと管理用マーカーを作成します。
+metago creates one directory per format, plus a marker file:
 
 ```text
 output/
@@ -139,21 +120,21 @@ output/
     └── Invoice__c.html
 ```
 
-`index.md`と`index.html`にはオブジェクト一覧を出力します。オブジェクトごとのファイルには、オブジェクト情報と項目一覧を出力します。
+`index.md` and `index.html` hold the object index. Each per-object file holds the object attributes and the field table.
 
-`--org-url`を指定した場合は、オブジェクト詳細と「項目とリレーション」のSalesforce設定画面へのリンクも表示します。HTMLではSalesforceへのリンクを別タブで開きます。
+With `--org-url`, links to the object detail and "Fields & Relationships" setup screens are included. In HTML those links open in a new tab.
 
-## 出力先の安全な置き換え
+## How the output directory is replaced
 
-生成に成功すると、出力先へ`.metago-generated`を作成します。2回目以降は、このマーカーがある場合だけ`markdown/`と`html/`を丸ごと置き換えます。出力先の直下にあるほかのファイルは変更しません。
+On a successful run metago writes `.metago-generated` into the output directory. From then on it replaces `markdown/` and `html/` wholesale, but only while that marker is present. Other files sitting directly in the output directory are left alone.
 
-マーカーがない出力先に`markdown/`または`html/`が存在する場合は、利用者のファイルを誤って失わないようエラーにします。既存のディレクトリを再利用するときは、その内容を確認したうえで別の場所へ退避するか、空の出力先を指定してください。
+If `markdown/` or `html/` already exists without the marker, metago refuses to run so that it cannot delete files you put there. Move the existing directory aside after reviewing it, or point `--output` somewhere empty.
 
-生成先の入れ替えに失敗した場合は、以前の生成結果の復元を試み、調査できるよう一時出力を保持します。
+If the swap itself fails, metago restores the previous output and keeps the staging directory so you can inspect it.
 
-## 開発
+## Development
 
-リポジトリを取得したあとは、ビルドせずにそのまま実行できます。
+You can run the tool straight from a checkout:
 
 ```sh
 go run ./cmd/metago \
@@ -161,7 +142,7 @@ go run ./cmd/metago \
   --output /path/to/output
 ```
 
-変更を加えたら次を確認します。
+After making a change:
 
 ```sh
 gofmt -l .
@@ -170,15 +151,15 @@ go test -race ./...
 go build ./cmd/metago
 ```
 
-## リリース
+## Releasing
 
-`v1.2.3`形式のタグをpushすると、GitHub ActionsがLinux、macOS、Windows向けにamd64とarm64のアーカイブを作成し、チェックサムとあわせてGitHub Releasesへ公開します。
+Pushing a `v1.2.3` style tag makes GitHub Actions build archives for Linux, macOS, and Windows on amd64 and arm64, and publish them to GitHub Releases together with checksums.
 
 ```sh
 git tag v0.1.0
 git push origin v0.1.0
 ```
 
-## ライセンス
+## License
 
 [MIT License](LICENSE)
