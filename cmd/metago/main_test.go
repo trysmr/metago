@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"runtime/debug"
 	"strings"
 	"testing"
 )
@@ -21,6 +22,56 @@ func TestRunPrintsVersion(t *testing.T) {
 
 	if got, want := stdout.String(), "metago dev\n"; got != want {
 		t.Errorf("バージョン出力 = %q, want %q", got, want)
+	}
+}
+
+func TestSelectVersionPrefersInjectedValueThenModuleVersion(t *testing.T) {
+	if got, want := selectVersion("v0.1.0", "v0.0.0-20260829093243-c2a0cf6ea38b"), "v0.1.0"; got != want {
+		t.Errorf("GitHub Releasesの実行ファイル = %q, want %q", got, want)
+	}
+	if got, want := selectVersion("dev", "v0.1.0"), "v0.1.0"; got != want {
+		t.Errorf("go installで入れた場合 = %q, want %q", got, want)
+	}
+	if got, want := selectVersion("dev", "v1.2.3-rc.1"), "v1.2.3-rc.1"; got != want {
+		t.Errorf("go installでプレリリースを指定した場合 = %q, want %q", got, want)
+	}
+	if got, want := selectVersion("dev", "v0.0.0-20260829093243-c2a0cf6ea38b"), "dev"; got != want {
+		t.Errorf("リポジトリ内でgo buildした場合 = %q, want %q", got, want)
+	}
+	if got, want := selectVersion("dev", "(devel)"), "dev"; got != want {
+		t.Errorf("go testやbuildvcsなしのビルド = %q, want %q", got, want)
+	}
+	if got, want := selectVersion("dev", ""), "dev"; got != want {
+		t.Errorf("モジュール情報がない場合 = %q, want %q", got, want)
+	}
+}
+
+func TestResolveVersionUsesModuleVersionWhenNotInjected(t *testing.T) {
+	original := readBuildInfo
+	t.Cleanup(func() { readBuildInfo = original })
+
+	readBuildInfo = func() (*debug.BuildInfo, bool) {
+		info := &debug.BuildInfo{}
+		info.Main.Version = "v0.1.0"
+
+		return info, true
+	}
+
+	if got, want := resolveVersion(), "v0.1.0"; got != want {
+		t.Errorf("go installで入れた場合のバージョン = %q, want %q", got, want)
+	}
+}
+
+func TestResolveVersionFallsBackWhenBuildInfoIsUnavailable(t *testing.T) {
+	original := readBuildInfo
+	t.Cleanup(func() { readBuildInfo = original })
+
+	readBuildInfo = func() (*debug.BuildInfo, bool) {
+		return nil, false
+	}
+
+	if got, want := resolveVersion(), "dev"; got != want {
+		t.Errorf("ビルド情報を読めない場合のバージョン = %q, want %q", got, want)
 	}
 }
 
