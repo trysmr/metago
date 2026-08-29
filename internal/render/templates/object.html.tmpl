@@ -1,0 +1,139 @@
+<!doctype html>
+<html lang="ja">
+<head>
+	<meta charset="utf-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1">
+	<title>{{ .Label }}（{{ .Object.APIName }}）</title>
+	{{ template "styles" . }}
+</head>
+<body>
+	<main>
+		<p><a href="index.html">オブジェクト一覧へ戻る</a></p>
+
+		<h1>
+			{{ .Label }}
+			（<code>{{ .Object.APIName }}</code>）
+		</h1>
+
+		{{ if .DetailURL }}
+		<p>
+			Salesforce設定:
+			<a href="{{ .DetailURL }}" target="_blank" rel="noopener noreferrer">詳細</a>
+			|
+			<a href="{{ .FieldsURL }}" target="_blank" rel="noopener noreferrer">項目とリレーション</a>
+		</p>
+		{{ end }}
+
+		<h2>オブジェクト情報</h2>
+
+		<table>
+			<tbody>
+				<tr>
+					<th>API名</th>
+					<td><code>{{ .Object.APIName }}</code></td>
+				</tr>
+				<tr>
+					<th>表示ラベル</th>
+					<td>{{ .Object.Label }}</td>
+				</tr>
+				<tr>
+					<th>複数形の表示ラベル</th>
+					<td>{{ .Object.PluralLabel }}</td>
+				</tr>
+				<tr>
+					<th>リリース情報</th>
+					<td>{{ .Object.DeploymentStatus }}</td>
+				</tr>
+				<tr>
+					<th>共有モデル</th>
+					<td>{{ .Object.SharingModel }}</td>
+				</tr>
+				<tr>
+					<th>活動</th>
+					<td>{{ enabledText .Object.EnableActivities }}</td>
+				</tr>
+				<tr>
+					<th>レポート</th>
+					<td>{{ enabledText .Object.EnableReports }}</td>
+				</tr>
+				<tr>
+					<th>項目履歴管理</th>
+					<td>{{ enabledText .Object.EnableHistory }}</td>
+				</tr>
+			</tbody>
+		</table>
+
+		<h2>項目一覧</h2>
+
+		{{ if .Fields }}
+		<div class="table-wrapper">
+			<table>
+				<thead>
+					<tr>
+						<th>表示ラベル</th>
+						<th>API名</th>
+						<th>型・詳細</th>
+						{{ range .FlagLabels }}
+						<th>{{ . }}</th>
+						{{ end }}
+						<th>数式</th>
+					</tr>
+				</thead>
+				<tbody>
+					{{ range .Fields }}
+					<tr>
+						<td>{{ .Definition.Label }}</td>
+						<td><code>{{ .Definition.APIName }}</code></td>
+						<td>
+							<code>{{ .Definition.Type }}</code>
+
+							{{ if .Details }}
+							<ul class="details">
+								{{ range .Details }}
+								<li>
+									{{ .Label }}:
+									{{ if .References }}
+									{{ range .References }}
+									<span class="reference">
+										{{ if .URL }}
+										<a href="{{ .URL }}">{{ .APIName }}</a>
+										{{ else }}
+										<code>{{ .APIName }}</code>
+										{{ end }}
+									</span>
+									{{ end }}
+									{{ else }}
+									{{ .Value }}
+									{{ end }}
+								</li>
+								{{ end }}
+							</ul>
+							{{ end }}
+						</td>
+						{{ range .Flags }}
+						<td>
+							{{ if .Enabled }}
+							<span class="badge">{{ .Label }}</span>
+							{{ else }}
+							—
+							{{ end }}
+						</td>
+						{{ end }}
+						<td>
+							{{ if .Definition.Formula }}
+							<code class="formula">{{ .Definition.Formula }}</code>
+							{{ else }}
+							—
+							{{ end }}
+						</td>
+					</tr>
+					{{ end }}
+				</tbody>
+			</table>
+		</div>
+		{{ else }}
+		<p>項目定義はありません。</p>
+		{{ end }}
+	</main>
+</body>
+</html>

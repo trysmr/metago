@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="ja">
+<head>
+	<meta charset="utf-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1">
+	<title>オブジェクト一覧</title>
+	{{ template "styles" . }}
+</head>
+<body>
+	<main>
+		<h1>オブジェクト一覧</h1>
+
+		<div class="table-wrapper">
+			<table>
+				<thead>
+					<tr>
+						<th>表示ラベル</th>
+						<th>API名</th>
+						<th>項目数</th>
+					</tr>
+				</thead>
+				<tbody>
+					{{ range . }}
+					<tr>
+						<td>
+							<a href="{{ objectFilename .APIName }}">
+								{{ displayLabel . }}
+							</a>
+						</td>
+						<td><code>{{ .APIName }}</code></td>
+						<td>{{ len .Fields }}</td>
+					</tr>
+					{{ end }}
+				</tbody>
+			</table>
+		</div>
+	</main>
+</body>
+</html>

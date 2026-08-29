@@ -1,0 +1,56 @@
+{{ define "styles" }}
+<style>
+	body {
+		max-width: 1600px;
+		margin: 0 auto;
+		padding: 2rem;
+		font-family: system-ui, sans-serif;
+		line-height: 1.6;
+	}
+
+	.table-wrapper {
+		overflow-x: auto;
+	}
+
+	table {
+		width: 100%;
+		border-collapse: collapse;
+	}
+
+	th,
+	td {
+		padding: 0.6rem;
+		border-bottom: 1px solid #d8dde6;
+		text-align: left;
+		vertical-align: top;
+	}
+
+	th {
+		background: #f3f3f3;
+		white-space: nowrap;
+	}
+
+	code,
+	.badge {
+		padding: 0.15rem 0.35rem;
+		border-radius: 0.25rem;
+		background: #f3f3f3;
+	}
+
+	.formula {
+		display: block;
+		min-width: 20rem;
+		white-space: pre-wrap;
+		overflow-wrap: anywhere;
+	}
+
+	.details {
+		margin: 0.4rem 0 0;
+		padding-left: 1.2rem;
+	}
+
+	.reference + .reference::before {
+		content: ", ";
+	}
+</style>
+{{ end }}
