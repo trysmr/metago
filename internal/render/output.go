@@ -18,12 +18,10 @@ const (
 	htmlDirectoryName     = "html"
 )
 
-// generatedDirectoryNamesは生成ごとに丸ごと入れ替えるディレクトリ。
 // 所有権の確認と入れ替えを同じ定義から駆動し、形式を増やしたときに
 // 片方だけ追従し忘れて利用者のディレクトリを消す事故を防ぐ。
 var generatedDirectoryNames = []string{markdownDirectoryName, htmlDirectoryName}
 
-// WriteDocumentationはMarkdownとHTMLを形式別のディレクトリへ出力する。
 func WriteDocumentation(
 	outputDirectory string,
 	objects []model.ObjectDefinition,
@@ -91,7 +89,6 @@ func WriteDocumentation(
 	return markOutputDirectory(outputDirectory)
 }
 
-// verifyOutputDirectoryOwnershipは出力先を本ツールが入れ替えてよいか確かめる。
 // マーカーがないのに生成先ディレクトリが既にある場合は、利用者が用意したものと
 // 見なして出力を拒む。
 func verifyOutputDirectoryOwnership(outputDirectory string) error {

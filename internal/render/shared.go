@@ -10,7 +10,6 @@ import (
 	"github.com/trysmr/metago/internal/model"
 )
 
-// fieldFlagは項目の真偽値属性を、表示名と読み取り方法の組で表す。
 // MarkdownとHTMLの見出し・セルをどちらもこの定義から組み立てるため、
 // 属性を増減するときの修正はこのスライス1箇所で済む。
 type fieldFlag struct {
@@ -35,7 +34,6 @@ func fieldFlagLabels() []string {
 	return labels
 }
 
-// fieldDetailは項目の型に付随する補足情報を、表示名と値の組で表す。
 // 参照先はオブジェクトへのリンクになるため、値ではなくAPI名の一覧で保持し、
 // リンクの組み立ては出力形式ごとのレンダラーに任せる。
 type fieldDetail struct {
@@ -88,12 +86,11 @@ var newlineReplacer = strings.NewReplacer(
 	"\r", " ",
 )
 
-// collapseNewlinesは表のセルへ収めるために改行を空白へ畳み込む。
+// 改行を含む値でも表のセルに収まるようにする。
 func collapseNewlines(value string) string {
 	return newlineReplacer.Replace(value)
 }
 
-// availableObjectNamesは生成対象のオブジェクト名の集合を返す。
 // 参照先が生成対象に含まれるときだけ相互リンクを張るために使う。
 func availableObjectNames(objects []model.ObjectDefinition) map[string]struct{} {
 	names := make(map[string]struct{}, len(objects))
@@ -104,7 +101,6 @@ func availableObjectNames(objects []model.ObjectDefinition) map[string]struct{} 
 	return names
 }
 
-// objectFilenameはAPI名から出力ファイル名を組み立てる。
 // 想定外の文字がAPI名に含まれてもリンクが壊れないようエスケープする。
 func objectFilename(apiName string, extension string) string {
 	return url.PathEscape(apiName) + extension

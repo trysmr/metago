@@ -247,7 +247,6 @@ func markdownFormulaCell(formula string) string {
 	return "<code>" + escaped + "</code>"
 }
 
-// markdownTextは表のセルを壊す記号をエスケープし、改行を空白へ畳み込む。
 var markdownEscapeReplacer = strings.NewReplacer(
 	`\`, `\\`,
 	"|", `\|`,
@@ -259,7 +258,6 @@ func markdownText(value string) string {
 	return collapseNewlines(markdownEscapeReplacer.Replace(value))
 }
 
-// markdownInlineCodeは値を囲えるまでバッククォートを増やし、コードスパンにする。
 func markdownInlineCode(value string) string {
 	value = strings.ReplaceAll(value, "|", `\|`)
 

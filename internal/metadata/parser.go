@@ -46,7 +46,7 @@ func loadObjectDirectory(path string) (model.ObjectDefinition, error) {
 	objectPath := filepath.Join(path, apiName+".object-meta.xml")
 	source, err := decodeXMLFile[objectXML](objectPath, "オブジェクト")
 	if err != nil {
-		// オブジェクト定義ファイルが無い場合は、ディレクトリ名をAPI名として扱う。
+		// 標準オブジェクトはobject-meta.xmlを持たないことがあるため、欠けていても続行する。
 		if !errors.Is(err, os.ErrNotExist) {
 			return model.ObjectDefinition{}, err
 		}
@@ -132,7 +132,6 @@ type fieldXML struct {
 	Formula      string   `xml:"formula"`
 }
 
-// validateは項目XMLに必要な情報が揃っているか確かめる。
 // オブジェクトはディレクトリ名をAPI名の代わりにできるが、項目のAPI名は
 // 一覧表の主要な列であり、欠けたまま生成すると空欄の資料ができてしまう。
 // メタデータ側の不備に気付けるよう、ここで生成を止める。
@@ -163,7 +162,6 @@ func (source fieldXML) toDefinition() model.FieldDefinition {
 	}
 }
 
-// decodeXMLFileはXMLファイルを読み込んでTへデコードする。
 // 読み込みとデコードを分けているのは、ファイルが無い場合の判定（errors.Is）を
 // 呼び出し側に残しつつ、デコード失敗を別の原因として報告するため。
 func decodeXMLFile[T any](path string, label string) (T, error) {
