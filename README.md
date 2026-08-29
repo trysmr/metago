@@ -67,29 +67,26 @@ force-app/main/default/objects/
 - リレーション名
 - 数式
 
-数式に改行が含まれる場合、MarkdownではHTMLの`<code>`要素で囲み、改行を`<br>`へ変換します。そのためMarkdownの表を維持したまま、表示上はXMLと同じ位置で改行されます。HTMLでは`code`要素内にXMLの改行をそのまま維持します。
-
-## 必要な環境
-
-- Go 1.26以上
-- ローカルに取得済みのSalesforce Metadata XML
+数式はMarkdownでもHTMLの`<code>`要素で囲みます。改行が含まれる場合は`<br>`へ変換するため、Markdownの表を1行に保ったまま、表示上はXMLと同じ位置で改行されます。HTMLでは`code`要素内にXMLの改行をそのまま維持します。
 
 ## インストール
 
-Goを利用できる環境では、次のコマンドでインストールできます。
+Go 1.26以上が必要です。
 
 ```sh
 go install github.com/trysmr/metago/cmd/metago@latest
 ```
 
-タグから作成した実行ファイルは[GitHub Releases](https://github.com/trysmr/metago/releases)で配布します。利用するOSとCPUアーキテクチャに対応するアーカイブをダウンロードして展開してください。
+`$GOBIN`、これを設定していない場合は`$HOME/go/bin`へ配置します。このディレクトリに`PATH`が通っていることを確認してください。
+
+Goを用意できない場合は、[GitHub Releases](https://github.com/trysmr/metago/releases)でLinux、macOS、Windows向けにamd64とarm64のアーカイブを配布しています。macOSではブラウザ経由でダウンロードした実行ファイルをGatekeeperが止めるため、`curl`で取得するか、`xattr -d com.apple.quarantine metago`で隔離属性を外してください。
 
 ## 実行方法
 
-リポジトリのルートで次のコマンドを実行します。
+解析対象の`objects`ディレクトリと生成先を指定します。
 
 ```sh
-go run ./cmd/metago \
+metago \
   --input /path/to/force-app/main/default/objects \
   --output /path/to/output
 ```
@@ -97,7 +94,7 @@ go run ./cmd/metago \
 Salesforce設定画面へのリンクも生成する場合は、組織のベースURLを指定します。
 
 ```sh
-go run ./cmd/metago \
+metago \
   --input /path/to/force-app/main/default/objects \
   --output /path/to/output \
   --org-url https://example.my.salesforce.com
@@ -111,6 +108,7 @@ go run ./cmd/metago \
 | `--output`  | はい   | 生成先ディレクトリ                |
 | `--org-url` | いいえ | Salesforce組織のベースURL         |
 | `--version` | いいえ | バージョンを表示して終了          |
+| `--help`    | いいえ | オプション一覧を表示して終了      |
 
 `--org-url`にはHTTPSのスキームとホストだけを指定してください。パス、クエリ、フラグメント、認証情報を含むURLは受け付けません。
 
@@ -123,20 +121,6 @@ chcp 65001
 ```
 
 Windows TerminalやPowerShell、Visual Studio Codeのターミナルでは、この操作は不要です。生成するMarkdownとHTMLは実行環境にかかわらずUTF-8で書き出すため、影響を受けるのは画面表示だけです。
-
-## ビルド
-
-```sh
-go build -o metago ./cmd/metago
-```
-
-作成した実行ファイルは次のように利用します。
-
-```sh
-./metago \
-  --input /path/to/force-app/main/default/objects \
-  --output /path/to/output
-```
 
 ## 出力
 
@@ -167,18 +151,28 @@ output/
 
 生成先の入れ替えに失敗した場合は、以前の生成結果の復元を試み、調査できるよう一時出力を保持します。
 
-## 開発時の確認
+## 開発
+
+リポジトリを取得したあとは、ビルドせずにそのまま実行できます。
+
+```sh
+go run ./cmd/metago \
+  --input /path/to/force-app/main/default/objects \
+  --output /path/to/output
+```
+
+変更を加えたら次を確認します。
 
 ```sh
 gofmt -l .
-go test ./...
-go test -race ./...
 go vet ./...
+go test -race ./...
+go build ./cmd/metago
 ```
 
 ## リリース
 
-`v1.2.3`形式のタグをpushすると、GitHub ActionsがLinux、macOS、Windows向けの実行ファイルとチェックサムをGitHub Releasesへ公開します。
+`v1.2.3`形式のタグをpushすると、GitHub ActionsがLinux、macOS、Windows向けにamd64とarm64のアーカイブを作成し、チェックサムとあわせてGitHub Releasesへ公開します。
 
 ```sh
 git tag v0.1.0
