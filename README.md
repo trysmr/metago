@@ -130,6 +130,8 @@ On a successful run metago writes `.metago-generated` into the output directory.
 
 If `markdown/` or `html/` already exists without the marker, metago refuses to run so that it cannot delete files you put there. Move the existing directory aside after reviewing it, or point `--output` somewhere empty.
 
+The input and output directories must be separate. metago rejects the same directory and any arrangement where one directory is inside the other, including paths that overlap through symbolic links.
+
 If the swap itself fails, metago restores the previous output and keeps the staging directory so you can inspect it.
 
 ## Development

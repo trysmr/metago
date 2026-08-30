@@ -7,6 +7,7 @@ import (
 	"io"
 	"log"
 	"os"
+	"path/filepath"
 	"runtime/debug"
 	"strings"
 
@@ -103,6 +104,9 @@ func run(args []string, stdout io.Writer, stderr io.Writer) error {
 	if *output == "" {
 		return errors.New("--output is required")
 	}
+	if err := validateSeparatePaths(*input, *output); err != nil {
+		return err
+	}
 
 	documentLanguage, err := render.ParseLanguage(*language)
 	if err != nil {
@@ -136,6 +140,88 @@ func run(args []string, stdout io.Writer, stderr io.Writer) error {
 	)
 
 	return nil
+}
+
+func validateSeparatePaths(inputPath string, outputPath string) error {
+	resolvedInput, err := resolvePath(inputPath)
+	if err != nil {
+		return fmt.Errorf("cannot resolve the input directory (%s): %w", inputPath, err)
+	}
+
+	resolvedOutput, err := resolvePath(outputPath)
+	if err != nil {
+		return fmt.Errorf("cannot resolve the output directory (%s): %w", outputPath, err)
+	}
+
+	inputContainsOutput, err := pathContains(resolvedInput, resolvedOutput)
+	if err != nil {
+		return err
+	}
+	outputContainsInput, err := pathContains(resolvedOutput, resolvedInput)
+	if err != nil {
+		return err
+	}
+	if inputContainsOutput || outputContainsInput {
+		return fmt.Errorf(
+			"the input and output directories must not overlap (%s, %s)",
+			inputPath,
+			outputPath,
+		)
+	}
+
+	return nil
+}
+
+// 存在しない生成先も、存在する最寄りの親までシンボリックリンクを解決する。
+// これにより、検証のために生成先を作成せずに入力との重なりを判定できる。
+func resolvePath(path string) (string, error) {
+	absolutePath, err := filepath.Abs(path)
+	if err != nil {
+		return "", err
+	}
+
+	currentPath := absolutePath
+	missingNames := make([]string, 0)
+	for {
+		resolvedPath, err := filepath.EvalSymlinks(currentPath)
+		if err == nil {
+			for index := len(missingNames) - 1; index >= 0; index-- {
+				resolvedPath = filepath.Join(resolvedPath, missingNames[index])
+			}
+
+			return filepath.Clean(resolvedPath), nil
+		}
+		if !errors.Is(err, os.ErrNotExist) {
+			return "", err
+		}
+
+		parentPath := filepath.Dir(currentPath)
+		if parentPath == currentPath {
+			return "", err
+		}
+
+		missingNames = append(missingNames, filepath.Base(currentPath))
+		currentPath = parentPath
+	}
+}
+
+func pathContains(parentPath string, childPath string) (bool, error) {
+	if !strings.EqualFold(filepath.VolumeName(parentPath), filepath.VolumeName(childPath)) {
+		return false, nil
+	}
+
+	relativePath, err := filepath.Rel(parentPath, childPath)
+	if err != nil {
+		return false, fmt.Errorf(
+			"cannot compare the input and output directories (%s, %s): %w",
+			parentPath,
+			childPath,
+			err,
+		)
+	}
+
+	return relativePath == "." ||
+		(relativePath != ".." && !strings.HasPrefix(relativePath, ".."+string(filepath.Separator))), nil
 }
 
 func objectCountLabel(count int) string {

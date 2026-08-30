@@ -111,6 +111,80 @@ func TestRunRejectsMissingInput(t *testing.T) {
 	}
 }
 
+func TestRunRejectsOutputInsideInput(t *testing.T) {
+	objectsDirectory := filepath.Join(t.TempDir(), "objects")
+	if err := os.MkdirAll(filepath.Join(objectsDirectory, "Account"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+
+	outputDirectory := filepath.Join(objectsDirectory, "generated")
+	var stdout bytes.Buffer
+	var stderr bytes.Buffer
+	err := run(
+		[]string{
+			"--input",
+			objectsDirectory,
+			"--output",
+			outputDirectory,
+		},
+		&stdout,
+		&stderr,
+	)
+	if err == nil {
+		t.Fatal("入力ディレクトリ内の生成先を受け付けました")
+	}
+	if !strings.Contains(err.Error(), "must not overlap") {
+		t.Errorf("エラーに入出力の重なりが示されていません: %v", err)
+	}
+	if _, statErr := os.Stat(outputDirectory); !errors.Is(statErr, os.ErrNotExist) {
+		t.Errorf("拒否した生成先が作成されました: %v", statErr)
+	}
+}
+
+func TestValidateSeparatePathsRejectsEveryOverlapDirection(t *testing.T) {
+	rootDirectory := t.TempDir()
+	inputDirectory := filepath.Join(rootDirectory, "objects")
+	if err := os.MkdirAll(inputDirectory, 0o755); err != nil {
+		t.Fatal(err)
+	}
+
+	for _, paths := range []struct {
+		name   string
+		input  string
+		output string
+	}{
+		{name: "same", input: inputDirectory, output: inputDirectory},
+		{name: "output inside input", input: inputDirectory, output: filepath.Join(inputDirectory, "generated")},
+		{name: "input inside output", input: inputDirectory, output: rootDirectory},
+	} {
+		t.Run(paths.name, func(t *testing.T) {
+			if err := validateSeparatePaths(paths.input, paths.output); err == nil {
+				t.Fatal("重なる入出力パスを受け付けました")
+			}
+		})
+	}
+}
+
+func TestValidateSeparatePathsResolvesSymbolicLinks(t *testing.T) {
+	rootDirectory := t.TempDir()
+	inputDirectory := filepath.Join(rootDirectory, "objects")
+	if err := os.MkdirAll(inputDirectory, 0o755); err != nil {
+		t.Fatal(err)
+	}
+
+	inputLink := filepath.Join(rootDirectory, "objects-link")
+	if err := os.Symlink(inputDirectory, inputLink); err != nil {
+		t.Skipf("シンボリックリンクを作成できません: %v", err)
+	}
+
+	if err := validateSeparatePaths(
+		inputDirectory,
+		filepath.Join(inputLink, "generated"),
+	); err == nil {
+		t.Fatal("シンボリックリンクを経由して重なる入出力パスを受け付けました")
+	}
+}
+
 func TestRunGeneratesMarkdownAndHTMLFromLocalMetadata(t *testing.T) {
 	objectsDirectory := filepath.Join(t.TempDir(), "objects")
 	fieldsDirectory := filepath.Join(objectsDirectory, "Account", "fields")
