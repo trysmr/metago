@@ -21,7 +21,7 @@ func writeMarkdown(
 ) error {
 	if err := os.MkdirAll(outputDirectory, 0o755); err != nil {
 		return fmt.Errorf(
-			"文書のMarkdown出力ディレクトリを作成できません（%s）: %w",
+			"cannot create the Markdown output directory (%s): %w",
 			outputDirectory,
 			err,
 		)

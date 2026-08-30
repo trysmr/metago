@@ -10,7 +10,6 @@ permissions:
   contents: read
 
 jobs:
-  # 書式と静的解析はOSに依存しないため、Linuxで1回だけ実行する。
   lint:
     runs-on: ubuntu-latest
     steps:
@@ -27,7 +26,7 @@ jobs:
         run: |
           unformatted=$(gofmt -l .)
           if [ -n "$unformatted" ]; then
-            echo "gofmtが必要なファイル:" >&2
+            echo "These files need gofmt:" >&2
             echo "$unformatted" >&2
             exit 1
           fi
@@ -35,12 +34,10 @@ jobs:
       - name: Vet
         run: go vet ./...
 
-      # 並行処理を持たないため、レースの検出はLinuxの1回で足りる。
+      # The code has no concurrency, so one race-detector run is enough.
       - name: Test with race detector
         run: go test -race ./...
 
-  # ファイルパスの区切りやディレクトリ入れ替えの挙動はOSごとに異なるため、
-  # 配布対象の3つのOSで実際にテストを実行する。
   test:
     strategy:
       fail-fast: false

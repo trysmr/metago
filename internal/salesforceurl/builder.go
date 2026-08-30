@@ -14,22 +14,22 @@ func NewBuilder(baseURL string) (Builder, error) {
 	normalized := strings.TrimSpace(baseURL)
 	parsed, err := url.Parse(normalized)
 	if err != nil {
-		return Builder{}, fmt.Errorf("Salesforce組織のURLを解析できません: %w", err)
+		return Builder{}, fmt.Errorf("cannot parse the Salesforce org URL: %w", err)
 	}
 
 	if parsed.Scheme != "https" || parsed.Host == "" {
-		return Builder{}, fmt.Errorf("Salesforce組織のURLにはhttpsから始まるURLを指定してください")
+		return Builder{}, fmt.Errorf("the Salesforce org URL must start with https")
 	}
 	if parsed.User != nil {
-		return Builder{}, fmt.Errorf("Salesforce組織のURLに認証情報は指定できません")
+		return Builder{}, fmt.Errorf("the Salesforce org URL must not contain credentials")
 	}
 
 	if parsed.Path != "" && parsed.Path != "/" {
-		return Builder{}, fmt.Errorf("Salesforce組織のURLにパスは指定できません")
+		return Builder{}, fmt.Errorf("the Salesforce org URL must not contain a path")
 	}
 
 	if parsed.RawQuery != "" || parsed.Fragment != "" {
-		return Builder{}, fmt.Errorf("Salesforce組織のURLにクエリやフラグメントは指定できません")
+		return Builder{}, fmt.Errorf("the Salesforce org URL must not contain a query or fragment")
 	}
 
 	return Builder{

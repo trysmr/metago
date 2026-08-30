@@ -15,7 +15,7 @@ import (
 func LoadObjects(path string) ([]model.ObjectDefinition, error) {
 	entries, err := os.ReadDir(path)
 	if err != nil {
-		return nil, fmt.Errorf("オブジェクトディレクトリを読み込めません（%s）: %w", path, err)
+		return nil, fmt.Errorf("cannot read the objects directory (%s): %w", path, err)
 	}
 
 	definitions := make([]model.ObjectDefinition, 0, len(entries))
@@ -44,7 +44,7 @@ func loadObjectDirectory(path string) (model.ObjectDefinition, error) {
 	}
 
 	objectPath := filepath.Join(path, apiName+".object-meta.xml")
-	source, err := decodeXMLFile[objectXML](objectPath, "オブジェクト")
+	source, err := decodeXMLFile[objectXML](objectPath, "object")
 	if err != nil {
 		// 標準オブジェクトはobject-meta.xmlを持たないことがあるため、欠けていても続行する。
 		if !errors.Is(err, os.ErrNotExist) {
@@ -61,7 +61,7 @@ func loadObjectDirectory(path string) (model.ObjectDefinition, error) {
 			return definition, nil
 		}
 
-		return model.ObjectDefinition{}, fmt.Errorf("項目ディレクトリが読み込めません（%s）: %w", fieldsPath, err)
+		return model.ObjectDefinition{}, fmt.Errorf("cannot read the fields directory (%s): %w", fieldsPath, err)
 	}
 
 	for _, entry := range entries {
@@ -70,7 +70,7 @@ func loadObjectDirectory(path string) (model.ObjectDefinition, error) {
 		}
 
 		fieldPath := filepath.Join(fieldsPath, entry.Name())
-		field, err := decodeXMLFile[fieldXML](fieldPath, "項目")
+		field, err := decodeXMLFile[fieldXML](fieldPath, "field")
 		if err != nil {
 			return model.ObjectDefinition{}, err
 		}
@@ -137,7 +137,7 @@ type fieldXML struct {
 // メタデータ側の不備に気付けるよう、ここで生成を止める。
 func (source fieldXML) validate() error {
 	if strings.TrimSpace(source.FullName) == "" {
-		return errors.New("項目API名がありません")
+		return errors.New("the field has no API name")
 	}
 
 	return nil
@@ -169,11 +169,11 @@ func decodeXMLFile[T any](path string, label string) (T, error) {
 
 	data, err := os.ReadFile(path)
 	if err != nil {
-		return decoded, fmt.Errorf("%sXMLを読み込めません（%s）: %w", label, path, err)
+		return decoded, fmt.Errorf("cannot read the %s XML file (%s): %w", label, path, err)
 	}
 
 	if err := xml.NewDecoder(bytes.NewReader(data)).Decode(&decoded); err != nil {
-		return decoded, fmt.Errorf("%sXMLが不正です（%s）: %w", label, path, err)
+		return decoded, fmt.Errorf("invalid %s XML file (%s): %w", label, path, err)
 	}
 
 	return decoded, nil

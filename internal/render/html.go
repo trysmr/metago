@@ -25,7 +25,7 @@ func writeHTML(
 ) error {
 	if err := os.MkdirAll(outputDirectory, 0o755); err != nil {
 		return fmt.Errorf(
-			"文書のHTML出力ディレクトリを作成できません（%s）: %w",
+			"cannot create the HTML output directory (%s): %w",
 			outputDirectory,
 			err,
 		)
@@ -48,7 +48,7 @@ func writeHTML(
 		)
 		if err != nil {
 			return fmt.Errorf(
-				"オブジェクトのHTMLを生成できません（%s）: %w",
+				"cannot render HTML for the object (%s): %w",
 				object.APIName,
 				err,
 			)
@@ -70,7 +70,7 @@ func writeHTML(
 func renderHTML(page *template.Template, data any) (string, error) {
 	var output bytes.Buffer
 	if err := page.Execute(&output, data); err != nil {
-		return "", fmt.Errorf("HTMLを生成できません: %w", err)
+		return "", fmt.Errorf("cannot render HTML: %w", err)
 	}
 
 	return output.String(), nil

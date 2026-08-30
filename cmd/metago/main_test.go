@@ -75,6 +75,18 @@ func TestResolveVersionFallsBackWhenBuildInfoIsUnavailable(t *testing.T) {
 	}
 }
 
+func TestObjectCountLabelUsesSingularForOne(t *testing.T) {
+	if got, want := objectCountLabel(0), "0 objects"; got != want {
+		t.Errorf("0件の表記 = %q, want %q", got, want)
+	}
+	if got, want := objectCountLabel(1), "1 object"; got != want {
+		t.Errorf("1件の表記 = %q, want %q", got, want)
+	}
+	if got, want := objectCountLabel(2), "2 objects"; got != want {
+		t.Errorf("2件の表記 = %q, want %q", got, want)
+	}
+}
+
 func TestRunPrintsHelp(t *testing.T) {
 	var stdout bytes.Buffer
 	var stderr bytes.Buffer
@@ -94,7 +106,7 @@ func TestRunRejectsMissingInput(t *testing.T) {
 	if err == nil {
 		t.Fatal("--inputがないのにコマンドが成功しました")
 	}
-	if !strings.Contains(err.Error(), "--inputを指定してください") {
+	if !strings.Contains(err.Error(), "--input is required") {
 		t.Errorf("エラーに不足したオプションがありません: %v", err)
 	}
 }
@@ -140,7 +152,7 @@ func TestRunGeneratesMarkdownAndHTMLFromLocalMetadata(t *testing.T) {
 	}
 
 	wantOutput := fmt.Sprintf(
-		"1件のオブジェクトからMarkdownとHTMLを生成しました: %s\n",
+		"Generated Markdown and HTML for 1 object: %s\n",
 		outputDirectory,
 	)
 	if got := stdout.String(); got != wantOutput {

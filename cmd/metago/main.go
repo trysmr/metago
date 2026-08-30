@@ -65,22 +65,22 @@ func run(args []string, stdout io.Writer, stderr io.Writer) error {
 	showVersion := flags.Bool(
 		"version",
 		false,
-		"バージョンを表示して終了する",
+		"print the version and exit",
 	)
 	input := flags.String(
 		"input",
 		"",
-		"Salesforceのobjectsディレクトリ",
+		"Salesforce objects directory",
 	)
 	output := flags.String(
 		"output",
 		"",
-		"生成先ディレクトリ（専用マーカーがあるmarkdownとhtmlを生成ごとに置き換えます）",
+		"output directory (markdown and html are replaced on every run once the marker exists)",
 	)
 	orgURL := flags.String(
 		"org-url",
 		"",
-		"Salesforce組織のURL",
+		"base URL of the Salesforce org",
 	)
 	if err := flags.Parse(args); err != nil {
 		return err
@@ -93,10 +93,10 @@ func run(args []string, stdout io.Writer, stderr io.Writer) error {
 	}
 
 	if *input == "" {
-		return errors.New("--inputを指定してください")
+		return errors.New("--input is required")
 	}
 	if *output == "" {
-		return errors.New("--outputを指定してください")
+		return errors.New("--output is required")
 	}
 
 	objects, err := metadata.LoadObjects(*input)
@@ -120,10 +120,18 @@ func run(args []string, stdout io.Writer, stderr io.Writer) error {
 
 	fmt.Fprintf(
 		stdout,
-		"%d件のオブジェクトからMarkdownとHTMLを生成しました: %s\n",
-		len(objects),
+		"Generated Markdown and HTML for %s: %s\n",
+		objectCountLabel(len(objects)),
 		*output,
 	)
 
 	return nil
+}
+
+func objectCountLabel(count int) string {
+	if count == 1 {
+		return "1 object"
+	}
+
+	return fmt.Sprintf("%d objects", count)
 }

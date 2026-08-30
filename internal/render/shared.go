@@ -108,7 +108,7 @@ func objectFilename(apiName string, extension string) string {
 
 func writeGeneratedFile(path string, content string) error {
 	if err := os.WriteFile(path, []byte(content), 0o644); err != nil {
-		return fmt.Errorf("生成ファイルを書き込めません（%s）: %w", path, err)
+		return fmt.Errorf("cannot write the generated file (%s): %w", path, err)
 	}
 
 	return nil
