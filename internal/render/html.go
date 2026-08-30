@@ -22,6 +22,7 @@ func writeHTML(
 	objects []model.ObjectDefinition,
 	links *salesforceurl.Builder,
 	availableObjects map[string]struct{},
+	l labels,
 ) error {
 	if err := os.MkdirAll(outputDirectory, 0o755); err != nil {
 		return fmt.Errorf(
@@ -31,7 +32,7 @@ func writeHTML(
 		)
 	}
 
-	index, err := renderHTML(indexTemplate, objects)
+	index, err := renderHTML(indexTemplate, indexHTMLData{Labels: l, Objects: objects})
 	if err != nil {
 		return err
 	}
@@ -44,7 +45,7 @@ func writeHTML(
 	for _, object := range objects {
 		content, err := renderHTML(
 			objectTemplate,
-			newObjectHTMLData(object, links, availableObjects),
+			newObjectHTMLData(object, links, availableObjects, l),
 		)
 		if err != nil {
 			return fmt.Errorf(
@@ -103,7 +104,13 @@ func mustParseTemplate(name string, functions template.FuncMap) *template.Templa
 	)
 }
 
+type indexHTMLData struct {
+	Labels  labels
+	Objects []model.ObjectDefinition
+}
+
 type objectHTMLData struct {
+	Labels     labels
 	Object     model.ObjectDefinition
 	Label      string
 	DetailURL  string
@@ -138,11 +145,14 @@ func newObjectHTMLData(
 	object model.ObjectDefinition,
 	links *salesforceurl.Builder,
 	availableObjects map[string]struct{},
+	l labels,
 ) objectHTMLData {
+	flags := fieldFlagsFor(l)
 	data := objectHTMLData{
+		Labels:     l,
 		Object:     object,
 		Label:      displayLabel(object),
-		FlagLabels: fieldFlagLabels(),
+		FlagLabels: fieldFlagLabels(flags),
 		Fields:     make([]fieldHTMLData, 0, len(object.Fields)),
 	}
 
@@ -154,11 +164,11 @@ func newObjectHTMLData(
 	for _, field := range object.Fields {
 		fieldData := fieldHTMLData{
 			Definition: field,
-			Details:    newDetailHTMLData(field, availableObjects),
-			Flags:      make([]flagHTMLData, 0, len(fieldFlags)),
+			Details:    newDetailHTMLData(field, availableObjects, l),
+			Flags:      make([]flagHTMLData, 0, len(flags)),
 		}
 
-		for _, flag := range fieldFlags {
+		for _, flag := range flags {
 			fieldData.Flags = append(fieldData.Flags, flagHTMLData{
 				Label:   flag.Label,
 				Enabled: flag.Enabled(field),
@@ -174,8 +184,9 @@ func newObjectHTMLData(
 func newDetailHTMLData(
 	field model.FieldDefinition,
 	availableObjects map[string]struct{},
+	l labels,
 ) []detailHTMLData {
-	details := fieldDetails(field)
+	details := fieldDetails(field, l)
 	converted := make([]detailHTMLData, 0, len(details))
 
 	for _, detail := range details {

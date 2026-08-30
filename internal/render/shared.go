@@ -17,21 +17,23 @@ type fieldFlag struct {
 	Enabled func(model.FieldDefinition) bool
 }
 
-var fieldFlags = []fieldFlag{
-	{Label: "必須", Enabled: func(field model.FieldDefinition) bool { return field.Required }},
-	{Label: "一意", Enabled: func(field model.FieldDefinition) bool { return field.Unique }},
-	{Label: "外部ID", Enabled: func(field model.FieldDefinition) bool { return field.ExternalID }},
-	{Label: "暗号化", Enabled: func(field model.FieldDefinition) bool { return field.Encrypted }},
-	{Label: "履歴管理", Enabled: func(field model.FieldDefinition) bool { return field.TrackHistory }},
+func fieldFlagsFor(l labels) []fieldFlag {
+	return []fieldFlag{
+		{Label: l.Required, Enabled: func(field model.FieldDefinition) bool { return field.Required }},
+		{Label: l.Unique, Enabled: func(field model.FieldDefinition) bool { return field.Unique }},
+		{Label: l.ExternalID, Enabled: func(field model.FieldDefinition) bool { return field.ExternalID }},
+		{Label: l.Encrypted, Enabled: func(field model.FieldDefinition) bool { return field.Encrypted }},
+		{Label: l.TrackHistory, Enabled: func(field model.FieldDefinition) bool { return field.TrackHistory }},
+	}
 }
 
-func fieldFlagLabels() []string {
-	labels := make([]string, 0, len(fieldFlags))
-	for _, flag := range fieldFlags {
-		labels = append(labels, flag.Label)
+func fieldFlagLabels(flags []fieldFlag) []string {
+	names := make([]string, 0, len(flags))
+	for _, flag := range flags {
+		names = append(names, flag.Label)
 	}
 
-	return labels
+	return names
 }
 
 // 参照先はオブジェクトへのリンクになるため、値ではなくAPI名の一覧で保持し、
@@ -42,23 +44,23 @@ type fieldDetail struct {
 	References []string
 }
 
-func fieldDetails(field model.FieldDefinition) []fieldDetail {
+func fieldDetails(field model.FieldDefinition, l labels) []fieldDetail {
 	details := make([]fieldDetail, 0, 5)
 
 	if field.Length != nil {
-		details = append(details, fieldDetail{Label: "長さ", Value: strconv.Itoa(*field.Length)})
+		details = append(details, fieldDetail{Label: l.Length, Value: strconv.Itoa(*field.Length)})
 	}
 	if field.Precision != nil {
-		details = append(details, fieldDetail{Label: "精度", Value: strconv.Itoa(*field.Precision)})
+		details = append(details, fieldDetail{Label: l.Precision, Value: strconv.Itoa(*field.Precision)})
 	}
 	if field.Scale != nil {
-		details = append(details, fieldDetail{Label: "小数点以下", Value: strconv.Itoa(*field.Scale)})
+		details = append(details, fieldDetail{Label: l.DecimalPlaces, Value: strconv.Itoa(*field.Scale)})
 	}
 	if len(field.ReferenceTo) > 0 {
-		details = append(details, fieldDetail{Label: "参照先", References: field.ReferenceTo})
+		details = append(details, fieldDetail{Label: l.RelatedTo, References: field.ReferenceTo})
 	}
 	if field.Relationship != "" {
-		details = append(details, fieldDetail{Label: "リレーション名", Value: field.Relationship})
+		details = append(details, fieldDetail{Label: l.RelationshipName, Value: field.Relationship})
 	}
 
 	return details
@@ -72,12 +74,12 @@ func displayLabel(object model.ObjectDefinition) string {
 	return object.APIName
 }
 
-func enabledText(enabled bool) string {
+func enabledText(enabled bool, l labels) string {
 	if enabled {
-		return "有効"
+		return l.Enabled
 	}
 
-	return "無効"
+	return l.Disabled
 }
 
 var newlineReplacer = strings.NewReplacer(

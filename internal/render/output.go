@@ -26,6 +26,7 @@ func WriteDocumentation(
 	outputDirectory string,
 	objects []model.ObjectDefinition,
 	links *salesforceurl.Builder,
+	language Language,
 ) (resultErr error) {
 	if err := os.MkdirAll(outputDirectory, 0o755); err != nil {
 		return fmt.Errorf(
@@ -60,14 +61,15 @@ func WriteDocumentation(
 	}()
 
 	availableObjects := availableObjectNames(objects)
+	l := labelsFor(language)
 
 	markdownDirectory := filepath.Join(stagingDirectory, markdownDirectoryName)
-	if err := writeMarkdown(markdownDirectory, objects, links, availableObjects); err != nil {
+	if err := writeMarkdown(markdownDirectory, objects, links, availableObjects, l); err != nil {
 		return fmt.Errorf("cannot generate Markdown: %w", err)
 	}
 
 	htmlDirectory := filepath.Join(stagingDirectory, htmlDirectoryName)
-	if err := writeHTML(htmlDirectory, objects, links, availableObjects); err != nil {
+	if err := writeHTML(htmlDirectory, objects, links, availableObjects, l); err != nil {
 		return fmt.Errorf("cannot generate HTML: %w", err)
 	}
 

@@ -37,7 +37,7 @@ func TestWriteDocumentationSeparatesFormatsAndOpensSalesforceLinksInNewTab(t *te
 	}
 
 	outputDirectory := t.TempDir()
-	if err := WriteDocumentation(outputDirectory, objects, &links); err != nil {
+	if err := WriteDocumentation(outputDirectory, objects, &links, LanguageJapanese); err != nil {
 		t.Fatal(err)
 	}
 
@@ -89,7 +89,7 @@ func TestWriteDocumentationPreservesFormulaLineBreaksInEachFormat(t *testing.T) 
 	}}
 
 	outputDirectory := t.TempDir()
-	if err := WriteDocumentation(outputDirectory, objects, nil); err != nil {
+	if err := WriteDocumentation(outputDirectory, objects, nil, LanguageJapanese); err != nil {
 		t.Fatal(err)
 	}
 
@@ -137,7 +137,7 @@ func TestWriteDocumentationRendersFieldAttributesAndDetailsInEachFormat(t *testi
 	}
 
 	outputDirectory := t.TempDir()
-	if err := WriteDocumentation(outputDirectory, objects, nil); err != nil {
+	if err := WriteDocumentation(outputDirectory, objects, nil, LanguageJapanese); err != nil {
 		t.Fatal(err)
 	}
 
@@ -175,7 +175,7 @@ func TestWriteDocumentationReplacesPreviousGeneratedDirectories(t *testing.T) {
 		APIName: "Stale",
 		Label:   "古いオブジェクト",
 	}}
-	if err := WriteDocumentation(outputDirectory, initialObjects, nil); err != nil {
+	if err := WriteDocumentation(outputDirectory, initialObjects, nil, LanguageJapanese); err != nil {
 		t.Fatal(err)
 	}
 
@@ -197,7 +197,7 @@ func TestWriteDocumentationReplacesPreviousGeneratedDirectories(t *testing.T) {
 		APIName: "Account",
 		Label:   "取引先",
 	}}
-	if err := WriteDocumentation(outputDirectory, objects, nil); err != nil {
+	if err := WriteDocumentation(outputDirectory, objects, nil, LanguageJapanese); err != nil {
 		t.Fatal(err)
 	}
 
@@ -225,7 +225,7 @@ func TestWriteDocumentationRefusesUnmarkedExistingGeneratedDirectories(t *testin
 		t.Fatal(err)
 	}
 
-	err := WriteDocumentation(outputDirectory, nil, nil)
+	err := WriteDocumentation(outputDirectory, nil, nil, LanguageJapanese)
 	if err == nil {
 		t.Fatal("マーカーがない既存ディレクトリへの出力が成功しました")
 	}
@@ -247,7 +247,7 @@ func TestWriteDocumentationKeepsOutputUnmarkedWhenGenerationFails(t *testing.T) 
 		APIName: strings.Repeat("A", 300),
 		Label:   "名前が長すぎるオブジェクト",
 	}}
-	if err := WriteDocumentation(outputDirectory, objects, nil); err == nil {
+	if err := WriteDocumentation(outputDirectory, objects, nil, LanguageJapanese); err == nil {
 		t.Fatal("ファイル名が長すぎるのに生成が成功しました")
 	}
 
@@ -265,7 +265,7 @@ func TestWriteDocumentationKeepsOutputUnmarkedWhenGenerationFails(t *testing.T) 
 		t.Fatal(err)
 	}
 
-	if err := WriteDocumentation(outputDirectory, nil, nil); err == nil {
+	if err := WriteDocumentation(outputDirectory, nil, nil, LanguageJapanese); err == nil {
 		t.Fatal("マーカーがない出力先への生成が成功しました")
 	}
 
@@ -285,7 +285,7 @@ func TestWriteDocumentationRejectsForeignMarker(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if err := WriteDocumentation(outputDirectory, nil, nil); err == nil {
+	if err := WriteDocumentation(outputDirectory, nil, nil, LanguageJapanese); err == nil {
 		t.Fatal("他ツールのマーカーがある出力先への生成が成功しました")
 	}
 }
@@ -327,6 +327,126 @@ func TestReplaceGeneratedDirectoriesRestoresPreviousOutputOnFailure(t *testing.T
 		}
 		if got := string(content); got != want {
 			t.Errorf("%sの内容 = %q, want %q", path, got, want)
+		}
+	}
+}
+
+func TestWriteDocumentationUsesEnglishHeadingsByDefault(t *testing.T) {
+	objects := []model.ObjectDefinition{{
+		APIName:          "Invoice__c",
+		Label:            "Invoice",
+		PluralLabel:      "Invoices",
+		EnableActivities: true,
+		Fields: []model.FieldDefinition{{
+			APIName:      "Account__c",
+			Label:        "Account",
+			Type:         "Lookup",
+			Required:     true,
+			ReferenceTo:  []string{"Account"},
+			Relationship: "Invoices",
+		}},
+	}}
+
+	outputDirectory := t.TempDir()
+	if err := WriteDocumentation(outputDirectory, objects, nil, LanguageEnglish); err != nil {
+		t.Fatal(err)
+	}
+
+	markdown, err := os.ReadFile(filepath.Join(outputDirectory, "markdown", "Invoice__c.md"))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	for _, want := range []string{
+		"## Object Details",
+		"| Attribute | Value |",
+		"| Plural Label | Invoices |",
+		"| Allow Activities | Enabled |",
+		"| Track Field History | Disabled |",
+		"## Fields",
+		"| Label | API Name | Type & Details | Required | Unique | External ID | Encrypted | Track History | Formula |",
+		"Related To:",
+		"Relationship Name:",
+	} {
+		if !strings.Contains(string(markdown), want) {
+			t.Errorf("英語の見出しがありません: %q\n%s", want, markdown)
+		}
+	}
+
+	html, err := os.ReadFile(filepath.Join(outputDirectory, "html", "index.html"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(html), `<html lang="en">`) {
+		t.Errorf("HTMLのlang属性が英語になっていません\n%s", html)
+	}
+}
+
+func TestWriteDocumentationUsesJapaneseHeadingsWhenRequested(t *testing.T) {
+	objects := []model.ObjectDefinition{{
+		APIName:          "Invoice__c",
+		Label:            "請求書",
+		PluralLabel:      "請求書",
+		EnableActivities: true,
+		Fields: []model.FieldDefinition{{
+			APIName:      "Account__c",
+			Label:        "取引先",
+			Type:         "Lookup",
+			Required:     true,
+			ReferenceTo:  []string{"Account"},
+			Relationship: "Invoices",
+		}},
+	}}
+
+	outputDirectory := t.TempDir()
+	if err := WriteDocumentation(outputDirectory, objects, nil, LanguageJapanese); err != nil {
+		t.Fatal(err)
+	}
+
+	markdown, err := os.ReadFile(filepath.Join(outputDirectory, "markdown", "Invoice__c.md"))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	for _, want := range []string{
+		"## オブジェクト情報",
+		"| 属性 | 値 |",
+		"| 複数形の表示ラベル | 請求書 |",
+		"| 活動 | 有効 |",
+		"| 項目履歴管理 | 無効 |",
+		"## 項目一覧",
+		"| 表示ラベル | API名 | 型・詳細 | 必須 | 一意 | 外部ID | 暗号化 | 履歴管理 | 数式 |",
+		"参照先:",
+		"リレーション名:",
+	} {
+		if !strings.Contains(string(markdown), want) {
+			t.Errorf("日本語の見出しがありません: %q\n%s", want, markdown)
+		}
+	}
+
+	html, err := os.ReadFile(filepath.Join(outputDirectory, "html", "index.html"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(html), `<html lang="ja">`) {
+		t.Errorf("HTMLのlang属性が日本語になっていません\n%s", html)
+	}
+}
+
+func TestParseLanguageAcceptsSupportedValuesOnly(t *testing.T) {
+	for _, value := range []string{"en", "ja"} {
+		language, err := ParseLanguage(value)
+		if err != nil {
+			t.Errorf("ParseLanguage(%q)がエラーを返しました: %v", value, err)
+		}
+		if string(language) != value {
+			t.Errorf("ParseLanguage(%q) = %q, want %q", value, language, value)
+		}
+	}
+
+	for _, value := range []string{"fr", "EN", "japanese", ""} {
+		if _, err := ParseLanguage(value); err == nil {
+			t.Errorf("ParseLanguage(%q)がエラーを返しませんでした", value)
 		}
 	}
 }

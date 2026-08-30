@@ -1,26 +1,26 @@
 <!doctype html>
-<html lang="ja">
+<html lang="{{ .Labels.HTMLLang }}">
 <head>
 	<meta charset="utf-8">
 	<meta name="viewport" content="width=device-width, initial-scale=1">
-	<title>オブジェクト一覧</title>
+	<title>{{ .Labels.ObjectIndexTitle }}</title>
 	{{ template "styles" . }}
 </head>
 <body>
 	<main>
-		<h1>オブジェクト一覧</h1>
+		<h1>{{ .Labels.ObjectIndexTitle }}</h1>
 
 		<div class="table-wrapper">
 			<table>
 				<thead>
 					<tr>
-						<th>表示ラベル</th>
-						<th>API名</th>
-						<th>項目数</th>
+						<th>{{ .Labels.Label }}</th>
+						<th>{{ .Labels.APIName }}</th>
+						<th>{{ .Labels.FieldCount }}</th>
 					</tr>
 				</thead>
 				<tbody>
-					{{ range . }}
+					{{ range .Objects }}
 					<tr>
 						<td>
 							<a href="{{ objectFilename .APIName }}">

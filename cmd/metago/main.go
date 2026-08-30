@@ -82,6 +82,11 @@ func run(args []string, stdout io.Writer, stderr io.Writer) error {
 		"",
 		"base URL of the Salesforce org",
 	)
+	language := flags.String(
+		"lang",
+		string(render.LanguageEnglish),
+		"language of the generated headings (en or ja)",
+	)
 	if err := flags.Parse(args); err != nil {
 		return err
 	}
@@ -99,6 +104,11 @@ func run(args []string, stdout io.Writer, stderr io.Writer) error {
 		return errors.New("--output is required")
 	}
 
+	documentLanguage, err := render.ParseLanguage(*language)
+	if err != nil {
+		return err
+	}
+
 	objects, err := metadata.LoadObjects(*input)
 	if err != nil {
 		return err
@@ -114,7 +124,7 @@ func run(args []string, stdout io.Writer, stderr io.Writer) error {
 		links = &builder
 	}
 
-	if err := render.WriteDocumentation(*output, objects, links); err != nil {
+	if err := render.WriteDocumentation(*output, objects, links, documentLanguage); err != nil {
 		return err
 	}
 

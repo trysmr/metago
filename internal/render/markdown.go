@@ -18,6 +18,7 @@ func writeMarkdown(
 	objects []model.ObjectDefinition,
 	links *salesforceurl.Builder,
 	availableObjects map[string]struct{},
+	l labels,
 ) error {
 	if err := os.MkdirAll(outputDirectory, 0o755); err != nil {
 		return fmt.Errorf(
@@ -28,7 +29,7 @@ func writeMarkdown(
 	}
 
 	indexPath := filepath.Join(outputDirectory, "index"+markdownExtension)
-	if err := writeGeneratedFile(indexPath, markdownIndex(objects)); err != nil {
+	if err := writeGeneratedFile(indexPath, markdownIndex(objects, l)); err != nil {
 		return err
 	}
 
@@ -40,7 +41,7 @@ func writeMarkdown(
 
 		if err := writeGeneratedFile(
 			path,
-			markdownObject(object, links, availableObjects),
+			markdownObject(object, links, availableObjects, l),
 		); err != nil {
 			return err
 		}
@@ -49,11 +50,11 @@ func writeMarkdown(
 	return nil
 }
 
-func markdownIndex(objects []model.ObjectDefinition) string {
+func markdownIndex(objects []model.ObjectDefinition, l labels) string {
 	var output strings.Builder
 
-	output.WriteString("# オブジェクト一覧\n\n")
-	writeMarkdownRow(&output, []string{"表示ラベル", "API名", "項目数"})
+	fmt.Fprintf(&output, "# %s\n\n", l.ObjectIndexTitle)
+	writeMarkdownRow(&output, []string{l.Label, l.APIName, l.FieldCount})
 	writeMarkdownRow(&output, markdownSeparators(3))
 
 	for _, object := range objects {
@@ -75,12 +76,13 @@ func markdownObject(
 	object model.ObjectDefinition,
 	links *salesforceurl.Builder,
 	availableObjects map[string]struct{},
+	l labels,
 ) string {
 	var output strings.Builder
 
 	fmt.Fprintf(
 		&output,
-		"# %s（%s）\n\n",
+		"# %s (%s)\n\n",
 		markdownText(displayLabel(object)),
 		markdownInlineCode(object.APIName),
 	)
@@ -88,35 +90,39 @@ func markdownObject(
 	if links != nil {
 		fmt.Fprintf(
 			&output,
-			"Salesforce設定: [詳細](%s) | [項目とリレーション](%s)\n\n",
+			"%s: [%s](%s) | [%s](%s)\n\n",
+			l.SetupPrefix,
+			l.SetupDetails,
 			links.ObjectDetails(object.APIName),
+			l.SetupFields,
 			links.ObjectFields(object.APIName),
 		)
 	}
 
-	output.WriteString("## オブジェクト情報\n\n")
-	writeMarkdownRow(&output, []string{"属性", "値"})
+	fmt.Fprintf(&output, "## %s\n\n", l.ObjectDetails)
+	writeMarkdownRow(&output, []string{l.Attribute, l.Value})
 	writeMarkdownRow(&output, markdownSeparators(2))
 
-	writeMarkdownProperty(&output, "API名", object.APIName)
-	writeMarkdownProperty(&output, "表示ラベル", object.Label)
-	writeMarkdownProperty(&output, "複数形の表示ラベル", object.PluralLabel)
-	writeMarkdownProperty(&output, "リリース情報", object.DeploymentStatus)
-	writeMarkdownProperty(&output, "共有モデル", object.SharingModel)
-	writeMarkdownProperty(&output, "活動", enabledText(object.EnableActivities))
-	writeMarkdownProperty(&output, "レポート", enabledText(object.EnableReports))
-	writeMarkdownProperty(&output, "項目履歴管理", enabledText(object.EnableHistory))
+	writeMarkdownProperty(&output, l.APIName, object.APIName)
+	writeMarkdownProperty(&output, l.Label, object.Label)
+	writeMarkdownProperty(&output, l.PluralLabel, object.PluralLabel)
+	writeMarkdownProperty(&output, l.DeploymentStatus, object.DeploymentStatus)
+	writeMarkdownProperty(&output, l.SharingModel, object.SharingModel)
+	writeMarkdownProperty(&output, l.Activities, enabledText(object.EnableActivities, l))
+	writeMarkdownProperty(&output, l.Reports, enabledText(object.EnableReports, l))
+	writeMarkdownProperty(&output, l.TrackFieldHistory, enabledText(object.EnableHistory, l))
 
-	output.WriteString("\n## 項目一覧\n\n")
+	fmt.Fprintf(&output, "\n## %s\n\n", l.Fields)
 
 	if len(object.Fields) == 0 {
-		output.WriteString("項目定義はありません。\n")
+		fmt.Fprintf(&output, "%s\n", l.NoFields)
 
 		return output.String()
 	}
 
-	headers := append([]string{"表示ラベル", "API名", "型・詳細"}, fieldFlagLabels()...)
-	headers = append(headers, "数式")
+	flags := fieldFlagsFor(l)
+	headers := append([]string{l.Label, l.APIName, l.TypeAndDetails}, fieldFlagLabels(flags)...)
+	headers = append(headers, l.Formula)
 
 	writeMarkdownRow(&output, headers)
 	writeMarkdownRow(&output, markdownSeparators(len(headers)))
@@ -125,9 +131,9 @@ func markdownObject(
 		cells := []string{
 			markdownText(field.Label),
 			markdownInlineCode(field.APIName),
-			markdownTypeCell(field, availableObjects),
+			markdownTypeCell(field, availableObjects, l),
 		}
-		for _, flag := range fieldFlags {
+		for _, flag := range flags {
 			cells = append(cells, markdownBadge(flag.Enabled(field), flag.Label))
 		}
 		cells = append(cells, markdownFormulaCell(field.Formula))
@@ -162,10 +168,11 @@ func writeMarkdownProperty(
 func markdownTypeCell(
 	field model.FieldDefinition,
 	availableObjects map[string]struct{},
+	l labels,
 ) string {
 	value := markdownInlineCode(field.Type)
 
-	if details := markdownDetails(field, availableObjects); details != "" {
+	if details := markdownDetails(field, availableObjects, l); details != "" {
 		value += " / " + details
 	}
 
@@ -175,8 +182,9 @@ func markdownTypeCell(
 func markdownDetails(
 	field model.FieldDefinition,
 	availableObjects map[string]struct{},
+	l labels,
 ) string {
-	details := fieldDetails(field)
+	details := fieldDetails(field, l)
 	values := make([]string, 0, len(details))
 
 	for _, detail := range details {

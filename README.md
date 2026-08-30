@@ -8,9 +8,6 @@ metago reads the `objects` directory of a Salesforce DX project and produces a b
 
 日本語版は[README.ja.md](README.ja.md)にあります。
 
-> **Note**
-> The command output and the generated documents are written in Japanese, because the headings follow the wording of the Salesforce Japanese UI (`表示ラベル`, `項目とリレーション`, and so on). Only this README is in English.
-
 ## Features
 
 - Generates an object index in both Markdown and HTML
@@ -88,10 +85,13 @@ metago \
 | `--input`   | Yes      | Salesforce `objects` directory                 |
 | `--output`  | Yes      | Output directory                               |
 | `--org-url` | No       | Base URL of the Salesforce org                 |
+| `--lang`    | No       | Language of the generated headings: `en` (default) or `ja` |
 | `--version` | No       | Print the version and exit                     |
 | `--help`    | No       | Print the option list and exit                 |
 
 `--org-url` accepts an HTTPS scheme and host only. URLs carrying a path, query, fragment, or credentials are rejected.
+
+`--lang` picks the wording of the generated headings. Both sets follow the Salesforce setup screens in that language — `Fields & Relationships` in English, `項目とリレーション` in Japanese — so the generated reference lines up with the org you are looking at.
 
 ### Running on Windows
 
