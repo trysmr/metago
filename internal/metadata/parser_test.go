@@ -1,8 +1,10 @@
 package metadata
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 )
 
@@ -178,6 +180,39 @@ func TestLoadObjectsRejectsWrongXMLRoot(t *testing.T) {
 
 	if _, err := LoadObjects(objectsDirectory); err == nil {
 		t.Fatal("CustomFieldをオブジェクト定義として受け付けました")
+	}
+}
+
+func TestLoadObjectsRejectsDuplicateObjectAPINames(t *testing.T) {
+	objectsDirectory := t.TempDir()
+	for index, directoryName := range []string{"First__c", "Second__c"} {
+		objectDirectory := filepath.Join(objectsDirectory, directoryName)
+		if err := os.MkdirAll(objectDirectory, 0o755); err != nil {
+			t.Fatal(err)
+		}
+
+		apiName := []string{"Duplicate__c", "duplicate__c"}[index]
+		objectXML := fmt.Sprintf(
+			`<CustomObject xmlns="http://soap.sforce.com/2006/04/metadata"><fullName>%s</fullName></CustomObject>`,
+			apiName,
+		)
+		if err := os.WriteFile(
+			filepath.Join(objectDirectory, directoryName+".object-meta.xml"),
+			[]byte(objectXML),
+			0o644,
+		); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	_, err := LoadObjects(objectsDirectory)
+	if err == nil {
+		t.Fatal("重複したオブジェクトAPI名を受け付けました")
+	}
+	for _, want := range []string{"Duplicate__c", "duplicate__c", "First__c", "Second__c"} {
+		if !strings.Contains(err.Error(), want) {
+			t.Errorf("エラーに%qがありません: %v", want, err)
+		}
 	}
 }
 

@@ -19,6 +19,11 @@ func LoadObjects(path string) ([]model.ObjectDefinition, error) {
 	}
 
 	definitions := make([]model.ObjectDefinition, 0, len(entries))
+	type loadedObject struct {
+		apiName string
+		path    string
+	}
+	objectsByNormalizedAPIName := make(map[string]loadedObject, len(entries))
 
 	for _, entry := range entries {
 		if !entry.IsDir() {
@@ -30,8 +35,22 @@ func LoadObjects(path string) ([]model.ObjectDefinition, error) {
 		if err != nil {
 			return nil, err
 		}
+		normalizedAPIName := strings.ToLower(definition.APIName)
+		if previous, exists := objectsByNormalizedAPIName[normalizedAPIName]; exists {
+			return nil, fmt.Errorf(
+				"the object API names %q and %q conflict in %s and %s",
+				previous.apiName,
+				definition.APIName,
+				previous.path,
+				objectPath,
+			)
+		}
 
 		definitions = append(definitions, definition)
+		objectsByNormalizedAPIName[normalizedAPIName] = loadedObject{
+			apiName: definition.APIName,
+			path:    objectPath,
+		}
 	}
 
 	return definitions, nil
