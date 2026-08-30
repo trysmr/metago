@@ -151,15 +151,6 @@ go test -race ./...
 go build ./cmd/metago
 ```
 
-## Releasing
-
-Pushing a `v1.2.3` style tag makes GitHub Actions build archives for Linux, macOS, and Windows on amd64 and arm64, and publish them to GitHub Releases together with checksums.
-
-```sh
-git tag v0.1.0
-git push origin v0.1.0
-```
-
 ## License
 
 [MIT License](LICENSE)

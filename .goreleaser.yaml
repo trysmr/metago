@@ -28,3 +28,8 @@ archives:
 
 checksum:
   name_template: checksums.txt
+
+# コミットメッセージは日本語で運用しているため、そのまま並べても英語話者に伝わらず、
+# 件名の列挙は破壊的変更の警告にもならない。リリース後にgh release editで英語のノートを書く。
+changelog:
+  disable: true

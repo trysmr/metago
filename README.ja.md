@@ -175,15 +175,6 @@ go test -race ./...
 go build ./cmd/metago
 ```
 
-## リリース
-
-`v1.2.3`形式のタグをpushすると、GitHub ActionsがLinux、macOS、Windows向けにamd64とarm64のアーカイブを作成し、チェックサムとあわせてGitHub Releasesへ公開します。
-
-```sh
-git tag v0.1.0
-git push origin v0.1.0
-```
-
 ## ライセンス
 
 [MIT License](LICENSE)
