@@ -290,14 +290,40 @@ func TestWriteDocumentationRejectsForeignMarker(t *testing.T) {
 	}
 }
 
-func TestReplaceGeneratedDirectoriesRestoresPreviousOutputOnFailure(t *testing.T) {
+func TestWriteDocumentationWritesMarkerToStagingDirectory(t *testing.T) {
+	original := writeOutputMarker
+	t.Cleanup(func() { writeOutputMarker = original })
+
+	var markerDirectory string
+	writeOutputMarker = func(outputDirectory string) error {
+		markerDirectory = outputDirectory
+
+		return markOutputDirectory(outputDirectory)
+	}
+
+	outputDirectory := t.TempDir()
+	if err := WriteDocumentation(outputDirectory, nil, nil, LanguageEnglish); err != nil {
+		t.Fatal(err)
+	}
+
+	if got, want := filepath.Dir(markerDirectory), outputDirectory; got != want {
+		t.Errorf("マーカーの書き込み先の親 = %q, want %q", got, want)
+	}
+	if name := filepath.Base(markerDirectory); !strings.HasPrefix(name, ".metago-") {
+		t.Errorf("マーカーの書き込み先 = %q", markerDirectory)
+	}
+}
+
+func TestReplaceGeneratedOutputEntriesRestoresPreviousOutputWhenMarkerInstallationFails(t *testing.T) {
 	outputDirectory := t.TempDir()
 	stagingDirectory := filepath.Join(outputDirectory, ".staging")
 
 	files := map[string]string{
 		filepath.Join(outputDirectory, "markdown", "index.md"):  "以前のMarkdown",
 		filepath.Join(outputDirectory, "html", "index.html"):    "以前のHTML",
+		filepath.Join(outputDirectory, outputMarkerFilename):    outputMarkerContent,
 		filepath.Join(stagingDirectory, "markdown", "index.md"): "新しいMarkdown",
+		filepath.Join(stagingDirectory, "html", "index.html"):   "新しいHTML",
 	}
 	for path, content := range files {
 		if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
@@ -308,18 +334,19 @@ func TestReplaceGeneratedDirectoriesRestoresPreviousOutputOnFailure(t *testing.T
 		}
 	}
 
-	err := replaceGeneratedDirectories(
+	err := replaceGeneratedOutputEntries(
 		outputDirectory,
 		stagingDirectory,
-		[]string{"markdown", "html"},
+		generatedOutputEntryNames,
 	)
 	if err == nil {
-		t.Fatal("一時HTMLがないのに入れ替えが成功しました")
+		t.Fatal("一時マーカーがないのに入れ替えが成功しました")
 	}
 
 	for path, want := range map[string]string{
 		filepath.Join(outputDirectory, "markdown", "index.md"): "以前のMarkdown",
 		filepath.Join(outputDirectory, "html", "index.html"):   "以前のHTML",
+		filepath.Join(outputDirectory, outputMarkerFilename):   outputMarkerContent,
 	} {
 		content, err := os.ReadFile(path)
 		if err != nil {

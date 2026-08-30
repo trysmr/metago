@@ -18,9 +18,21 @@ const (
 	htmlDirectoryName     = "html"
 )
 
-// 所有権の確認と入れ替えを同じ定義から駆動し、形式を増やしたときに
-// 片方だけ追従し忘れて利用者のディレクトリを消す事故を防ぐ。
+// マーカーがない場合に既存の内容を保護する必要があるディレクトリ。
+// マーカー自体は所有を示す側なので、この一覧には含めない。
 var generatedDirectoryNames = []string{markdownDirectoryName, htmlDirectoryName}
+
+// 入れ替えと復元を同じ単位で行う出力ルート直下の項目。
+// マーカーの設置に失敗した場合も以前の生成結果を復元するため、マーカーを含める。
+var generatedOutputEntryNames = []string{
+	markdownDirectoryName,
+	htmlDirectoryName,
+	outputMarkerFilename,
+}
+
+// WriteDocumentationがマーカーを入れ替え前のステージングへ書くことを
+// テストで確認できるよう、書き込み処理を差し替え可能にする。
+var writeOutputMarker = markOutputDirectory
 
 func WriteDocumentation(
 	outputDirectory string,
@@ -72,23 +84,24 @@ func WriteDocumentation(
 	if err := writeHTML(htmlDirectory, objects, links, availableObjects, l); err != nil {
 		return fmt.Errorf("cannot generate HTML: %w", err)
 	}
+	if err := writeOutputMarker(stagingDirectory); err != nil {
+		return fmt.Errorf("cannot prepare the output marker: %w", err)
+	}
 
-	if err := replaceGeneratedDirectories(
+	if err := replaceGeneratedOutputEntries(
 		outputDirectory,
 		stagingDirectory,
-		generatedDirectoryNames,
+		generatedOutputEntryNames,
 	); err != nil {
 		preserveStagingDirectory = true
 		return fmt.Errorf(
-			"cannot swap the generated directories; kept the staging directory (%s): %w",
+			"cannot swap the generated output; kept the staging directory (%s): %w",
 			stagingDirectory,
 			err,
 		)
 	}
 
-	// 入れ替えが成功して初めて所有を記録する。失敗した回にマーカーだけが残ると、
-	// 次回以降は所有済みと見なされ、利用者が置いたディレクトリを警告なく消してしまう。
-	return markOutputDirectory(outputDirectory)
+	return nil
 }
 
 // マーカーがないのに生成先ディレクトリが既にある場合は、利用者が用意したものと
@@ -132,19 +145,19 @@ func markOutputDirectory(outputDirectory string) error {
 	return nil
 }
 
-type generatedDirectoryBackup struct {
+type generatedOutputEntryBackup struct {
 	name string
 	path string
 }
 
-func replaceGeneratedDirectories(
+func replaceGeneratedOutputEntries(
 	outputDirectory string,
 	stagingDirectory string,
-	directoryNames []string,
+	entryNames []string,
 ) error {
-	backups := make([]generatedDirectoryBackup, 0, len(directoryNames))
+	backups := make([]generatedOutputEntryBackup, 0, len(entryNames))
 
-	for _, name := range directoryNames {
+	for _, name := range entryNames {
 		target := filepath.Join(outputDirectory, name)
 		if _, err := os.Stat(target); err != nil {
 			if errors.Is(err, os.ErrNotExist) {
@@ -156,31 +169,31 @@ func replaceGeneratedDirectories(
 
 		backup := filepath.Join(stagingDirectory, "previous-"+name)
 		if err := os.Rename(target, backup); err != nil {
-			rollbackErr := restoreGeneratedDirectories(outputDirectory, backups)
+			rollbackErr := restoreGeneratedOutputEntries(outputDirectory, backups)
 			return errors.Join(
-				fmt.Errorf("cannot move the existing generated directory aside (%s): %w", target, err),
+				fmt.Errorf("cannot move the existing generated output entry aside (%s): %w", target, err),
 				rollbackErr,
 			)
 		}
 
-		backups = append(backups, generatedDirectoryBackup{
+		backups = append(backups, generatedOutputEntryBackup{
 			name: name,
 			path: backup,
 		})
 	}
 
-	installed := make([]string, 0, len(directoryNames))
-	for _, name := range directoryNames {
+	installed := make([]string, 0, len(entryNames))
+	for _, name := range entryNames {
 		source := filepath.Join(stagingDirectory, name)
 		target := filepath.Join(outputDirectory, name)
 		if err := os.Rename(source, target); err != nil {
-			rollbackErr := rollbackGeneratedDirectories(
+			rollbackErr := rollbackGeneratedOutputEntries(
 				outputDirectory,
 				installed,
 				backups,
 			)
 			return errors.Join(
-				fmt.Errorf("cannot swap the generated directory (%s): %w", target, err),
+				fmt.Errorf("cannot swap the generated output entry (%s): %w", target, err),
 				rollbackErr,
 			)
 		}
@@ -191,10 +204,10 @@ func replaceGeneratedDirectories(
 	return nil
 }
 
-func rollbackGeneratedDirectories(
+func rollbackGeneratedOutputEntries(
 	outputDirectory string,
 	installed []string,
-	backups []generatedDirectoryBackup,
+	backups []generatedOutputEntryBackup,
 ) error {
 	var rollbackErr error
 	for _, name := range installed {
@@ -202,20 +215,20 @@ func rollbackGeneratedDirectories(
 		if err := os.RemoveAll(path); err != nil {
 			rollbackErr = errors.Join(
 				rollbackErr,
-				fmt.Errorf("cannot remove the new generated directory (%s): %w", path, err),
+				fmt.Errorf("cannot remove the new generated output entry (%s): %w", path, err),
 			)
 		}
 	}
 
 	return errors.Join(
 		rollbackErr,
-		restoreGeneratedDirectories(outputDirectory, backups),
+		restoreGeneratedOutputEntries(outputDirectory, backups),
 	)
 }
 
-func restoreGeneratedDirectories(
+func restoreGeneratedOutputEntries(
 	outputDirectory string,
-	backups []generatedDirectoryBackup,
+	backups []generatedOutputEntryBackup,
 ) error {
 	var restoreErr error
 	for _, backup := range backups {
@@ -223,7 +236,7 @@ func restoreGeneratedDirectories(
 		if err := os.Rename(backup.path, target); err != nil {
 			restoreErr = errors.Join(
 				restoreErr,
-				fmt.Errorf("cannot restore the previous generated directory (%s): %w", target, err),
+				fmt.Errorf("cannot restore the previous generated output entry (%s): %w", target, err),
 			)
 		}
 	}
